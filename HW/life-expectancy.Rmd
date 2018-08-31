@@ -1,0 +1,118 @@
+---
+title: "Stat 579 - Life Expectancy"
+author: "Joseph Zemmels"
+date: "8/30/2018"
+output: html_document
+---
+---
+title: "Stat 579 - Life Expectancy"
+author: "Joseph Zemmels"
+date: "8/30/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=4, fig.height=4)
+library(tidyverse)
+```
+
+# Life Expectancy in Mexico, Canada and the US 
+
+## Step-by-step plan of work
+
+1. Read the data
+2. Focus on values of Canada
+3. Visualize the values for Canada
+4. See whether we can find the problem
+5. ... then we'll see ...
+
+## Reading the data 
+
+```{r}
+life5060 <- read.csv("./gapminder-5060.csv")
+head(life5060)
+```
+
+## Focus on the values for Canada
+
+```{r}
+canada <- life5060 %>% filter(country == "Canada")
+head(canada)
+```
+
+## Visualize 
+
+Draw a line for the life expectancy in Canada:
+```{r}
+canada %>% 
+  ggplot(aes(x = year, y = lifeExp)) +
+  geom_line()
+```
+
+Clearly there is something wrong with the value in 1957.
+
+## Find the problematic value and fix it
+#### **Note:** I wanted to practice piping, so I decided to replace the problematic value with the mean of the 2 surrounding values from '52 and '62.
+```{r}
+canada %>% filter(year == 1957)
+
+lifeExp_1952 <- canada %>% filter(year == 1952) %>% .$lifeExp
+lifeExp_1962 <- canada %>% filter(year == 1962) %>% .$lifeExp
+
+canada_fixed <- canada %>% mutate(
+  lifeExp = replace(lifeExp, year==1957, mean(c(lifeExp_1952,lifeExp_1962)))
+)
+```
+
+## visualize the fixed data
+
+```{r}
+canada_fixed %>% ggplot(aes(x = year, y = lifeExp)) +
+  geom_line()
+```
+
+## ... on to the stretch goal ... 
+
+Add lines for Mexico and the US
+
+```{r}
+canada_fixed %>% 
+  ggplot(aes(x = year, y = lifeExp, group=country)) + geom_line() +
+  geom_line(data = life5060 %>% 
+              filter(country %in% c("United States", "Mexico")))
+```
+
+## ... on to the stretch goal ... 
+
+Add lines for Mexico and the US, color lines by country and add a legend
+
+```{r, fig.width = 6}
+canada_fixed %>% 
+  ggplot(aes(x = year, y = lifeExp, colour=country)) + geom_line() +
+  geom_line(data = life5060 %>% 
+              filter(country %in% c("United States", "Mexico")))
+
+```
+
+## Expanded set with '70-'80 data included
+
+```{r}
+life7080 <- read.csv('gap7080.csv')
+
+northAm5080 <- life5060 %>% rbind(life7080) %>% filter(country %in% c('United States','Canada','Mexico')) %>% arrange(country,year)
+
+lifeExp_1952 <- northAm5080 %>% filter(country == 'Canada' & year == 1952) %>% .$lifeExp
+lifeExp_1962 <- northAm5080 %>% filter(country == 'Canada' & year == 1962) %>% .$lifeExp
+
+northAm5080_fixed <- northAm5080 %>% mutate(
+  lifeExp = replace(lifeExp, country == 'Canada' & year==1957, mean(c(lifeExp_1952,lifeExp_1962)))
+)
+
+northAm5080_fixed
+```
+
+```{r}
+northAm5080_fixed %>% ggplot(aes(x=year,y=lifeExp, color=country)) + geom_line() + labs(x='Years',y='Life Expectancy')
+```
+
+#### I notice that the life expectancy in Mexico changed much more drastically from 1952-1987 than in the U.S. and Canada. However, all 3 have been steadily increasing and the U.S. and Canada still have a decade-longer life expectancy.
